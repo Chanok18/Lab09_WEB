@@ -1,0 +1,375 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  Search, Star, Film, X, Clock, CalendarDays,
+  Clapperboard, LoaderCircle, UserRound, Play,
+} from "lucide-react";
+import type {
+  Movie,
+  MovieDetails,
+  OMDbSearchResponse,
+} from "@/lib/movie-types";
+
+type Filter = "all" | "movie" | "series";
+
+export default function MovieExplorer() {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState<MovieDetails | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    if (query.trim().length < 2) {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError("");
+      setSearched(true);
+
+      try {
+        const params = new URLSearchParams({
+          s: query.trim(),
+        });
+
+        if (filter !== "all") {
+          params.set("type", filter);
+        }
+
+        const response = await fetch(
+          `/api/movies?${params.toString()}`,
+          { signal: controller.signal }
+        );
+
+        const data: OMDbSearchResponse = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.Error || "Error al buscar películas");
+        }
+
+        if (!controller.signal.aborted) {
+          setMovies(data.Response === "True" ? data.Search || [] : []);
+          if (data.Response === "False" && data.Error !== "Movie not found!") {
+            setError(data.Error || "No se encontraron resultados");
+          }
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setError(
+            err instanceof Error ? err.message : "Error al buscar"
+          );
+          setMovies([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 650);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query, filter]);
+
+  async function openDetails(id: string) {
+    setDetailLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/movies?i=${encodeURIComponent(id)}`
+      );
+      const data = await response.json();
+
+      if (!response.ok || data.Response === "False") {
+        throw new Error(data.Error || "No se pudieron cargar los detalles");
+      }
+
+      setSelected(data as MovieDetails);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Error al cargar detalles"
+      );
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
+  return (
+    <section id="buscar" className="mx-auto max-w-7xl px-5 pt-8 pb-6 md:px-10">
+      <div className="mb-5">
+        <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-fuchsia-400">
+          DESCUBRE TU PRÓXIMA FAVORITA
+        </p>
+        <h2 className="text-2xl font-black md:text-3xl">
+          Explora el universo del cine
+        </h2>
+        <p className="mt-4 max-w-2xl text-slate-400">
+          Busca entre miles de películas y series, descubre sus historias
+          y consulta toda su información.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-violet-400/20 bg-gradient-to-r from-violet-500/10 via-white/[0.04] to-fuchsia-500/10 p-4 shadow-xl shadow-violet-950/20 md:p-5">
+        <div className="flex items-center gap-3 rounded-2xl border border-white/15 bg-[#111827] px-5 py-4 focus-within:border-violet-400">
+          <Search className="shrink-0 text-violet-400" size={24} />
+          <input
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setMovies([]);
+              setSearched(false);
+              setError("");
+            }}
+            placeholder="Busca una película o serie... Ej: Batman, Marvel, Dark"
+            className="w-full bg-transparent text-base text-white outline-none placeholder:text-slate-500"
+          />
+          {query && (
+            <button
+              onClick={() => {
+                setQuery("");
+                setMovies([]);
+                setSearched(false);
+                setError("");
+              }}
+              aria-label="Limpiar búsqueda"
+              className="text-slate-400 hover:text-white"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          {([
+            ["all", "Todo"],
+            ["movie", "Películas"],
+            ["series", "Series"],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value)}
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+                filter === value
+                  ? "bg-violet-600 text-white shadow-lg shadow-violet-900/30"
+                  : "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading && (
+        <div className="flex items-center justify-center gap-3 py-14 text-violet-300">
+          <LoaderCircle className="animate-spin" />
+          Buscando títulos...
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+          {error}
+        </p>
+      )}
+
+      {!loading && searched && !error && movies.length === 0 && (
+        <div className="py-14 text-center text-slate-400">
+          No encontramos títulos con esa búsqueda. Prueba con otro nombre.
+        </div>
+      )}
+
+      {!loading && movies.length > 0 && (
+        <>
+          <div className="mb-6 mt-10 flex items-center justify-between">
+            <h3 className="text-xl font-bold">Resultados de búsqueda</h3>
+            <span className="text-sm text-slate-400">
+              {movies.length} títulos en esta página
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {movies.map((movie) => (
+              <button
+                key={movie.imdbID}
+                onClick={() => openDetails(movie.imdbID)}
+                className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition duration-300 hover:-translate-y-2 hover:border-violet-400/60"
+              >
+                <div className="relative aspect-[2/3] overflow-hidden bg-slate-800">
+                  {movie.Poster && movie.Poster !== "N/A" ? (
+                    <img
+                      src={movie.Poster}
+                      alt={movie.Title}
+                      className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <Film size={44} className="text-slate-500" />
+                    </div>
+                  )}
+
+                  <span className="absolute left-3 top-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-white">
+                    {movie.Type === "series" ? "SERIE" : "PELÍCULA"}
+                  </span>
+
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition group-hover:opacity-100">
+                    <span className="rounded-full bg-violet-600 p-4">
+                      <Play size={22} fill="currentColor" />
+                    </span>
+                  </div>
+                </div>
+
+                <div className="p-4">
+                  <h4 className="truncate font-bold text-white">
+                    {movie.Title}
+                  </h4>
+                  <p className="mt-2 text-sm text-slate-400">
+                    {movie.Year}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!searched && query.length < 2 && (
+        <div className="mt-10 flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/10 py-14 text-center">
+          <div className="rounded-2xl bg-violet-500/10 p-5 text-violet-400">
+            <Clapperboard size={36} />
+          </div>
+          <h3 className="text-xl font-bold">Miles de historias por descubrir</h3>
+          <p className="max-w-md text-sm text-slate-400">
+            Escribe el nombre de una película o serie para comenzar.
+          </p>
+        </div>
+      )}
+
+      {detailLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <LoaderCircle size={42} className="animate-spin text-violet-400" />
+        </div>
+      )}
+
+      {selected && (
+        <div
+          role="presentation"
+          onClick={() => setSelected(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Detalles de ${selected.Title}`}
+            onClick={(event) => event.stopPropagation()}
+            className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/15 bg-[#111827] shadow-2xl"
+          >
+            <button
+              onClick={() => setSelected(null)}
+              aria-label="Cerrar detalles"
+              className="absolute right-5 top-5 z-10 rounded-full bg-black/70 p-3 text-white hover:bg-violet-600"
+            >
+              <X size={22} />
+            </button>
+
+            <div className="grid gap-8 p-6 md:grid-cols-[250px_1fr] md:p-9">
+              <div>
+                {selected.Poster !== "N/A" ? (
+                  <img
+                    src={selected.Poster}
+                    alt={selected.Title}
+                    className="w-full rounded-2xl object-cover shadow-xl"
+                  />
+                ) : (
+                  <div className="flex aspect-[2/3] items-center justify-center rounded-2xl bg-slate-800">
+                    <Film size={50} />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest text-violet-400">
+                  {selected.Type === "series" ? "SERIE" : "PELÍCULA"}
+                </span>
+
+                <h2 className="mt-3 text-3xl font-black md:text-4xl">
+                  {selected.Title}
+                </h2>
+
+                <div className="mt-5 flex flex-wrap gap-4 text-sm text-slate-300">
+                  <span className="flex items-center gap-1 text-amber-400">
+                    <Star size={17} fill="currentColor" />
+                    {selected.imdbRating}/10
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CalendarDays size={17} />
+                    {selected.Year}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock size={17} />
+                    {selected.Runtime}
+                  </span>
+                </div>
+
+                <p className="mt-5 text-sm font-medium text-violet-300">
+                  {selected.Genre}
+                </p>
+
+                <p className="mt-5 leading-7 text-slate-300">
+                  {selected.Plot !== "N/A"
+                    ? selected.Plot
+                    : "Sin sinopsis disponible."}
+                </p>
+
+                <div className="mt-7 space-y-4 border-t border-white/10 pt-6 text-sm">
+                  <p>
+                    <strong className="text-white">Director: </strong>
+                    <span className="text-slate-300">{selected.Director}</span>
+                  </p>
+                  <p className="flex items-start gap-2">
+                    <UserRound size={17} className="mt-0.5 shrink-0 text-violet-400" />
+                    <span>
+                      <strong className="text-white">Reparto: </strong>
+                      <span className="text-slate-300">{selected.Actors}</span>
+                    </span>
+                  </p>
+                  <p>
+                    <strong className="text-white">Estreno: </strong>
+                    <span className="text-slate-300">{selected.Released}</span>
+                  </p>
+                  <p>
+                    <strong className="text-white">País: </strong>
+                    <span className="text-slate-300">{selected.Country}</span>
+                  </p>
+                  <p>
+                    <strong className="text-white">Premios: </strong>
+                    <span className="text-slate-300">{selected.Awards}</span>
+                  </p>
+                </div>
+
+                <a
+                  href={`https://www.imdb.com/title/${selected.imdbID}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-8 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 font-bold text-white transition hover:bg-violet-500"
+                >
+                  <Star size={18} />
+                  Ver en IMDb
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

@@ -1,0 +1,303 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  ArrowRight,
+  CalendarDays,
+  Clapperboard,
+  Clock3,
+  Film,
+  LoaderCircle,
+  Play,
+  Star,
+  X,
+} from "lucide-react";
+import type { MovieDetails } from "@/lib/movie-types";
+
+interface Props {
+  movies: MovieDetails[];
+}
+
+export default function FeaturedMovies({ movies }: Props) {
+  const [selected, setSelected] = useState<MovieDetails | null>(null);
+  const [active, setActive] = useState(0);
+  const [error, setError] = useState("");
+
+  const hero = movies[active];
+
+  useEffect(() => {
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setSelected(null);
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  function showDetails(movie: MovieDetails) {
+    setError("");
+    setSelected(movie);
+  }
+
+  if (!hero) {
+    return (
+      <div className="mx-auto max-w-7xl px-5 py-16 text-center text-slate-400">
+        No se pudieron cargar las películas destacadas.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <section id="inicio" className="relative isolate overflow-hidden border-b border-white/10">
+        <div
+          className="absolute inset-0 -z-20 scale-110 bg-cover bg-center opacity-30 blur-2xl"
+          style={{ backgroundImage: hero.Poster !== "N/A" ? `url("${hero.Poster}")` : undefined }}
+        />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#080b16] via-[#080b16]/90 to-[#080b16]/50" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-[#080b16] via-transparent to-transparent" />
+
+        <div className="mx-auto grid min-h-[570px] max-w-7xl items-center gap-10 px-5 py-14 md:grid-cols-[1.2fr_0.8fr] md:px-10">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-fuchsia-400/30 bg-fuchsia-500/10 px-4 py-2 text-xs font-bold uppercase tracking-widest text-fuchsia-300">
+              <Star size={14} fill="currentColor" />
+              En nuestro catálogo
+            </span>
+
+            <h1 className="mt-6 max-w-3xl text-5xl font-black leading-tight tracking-tight md:text-7xl">
+              {hero.Title}
+            </h1>
+
+            <div className="mt-6 flex flex-wrap items-center gap-4 text-sm text-slate-200">
+              <span className="flex items-center gap-1 font-bold text-amber-400">
+                <Star size={17} fill="currentColor" />
+                {hero.imdbRating} IMDb
+              </span>
+              <span>{hero.Year}</span>
+              <span>{hero.Runtime}</span>
+              <span className="rounded-md border border-white/30 px-2 py-1 text-xs">
+                {hero.Rated}
+              </span>
+            </div>
+
+            <p className="mt-6 max-w-xl text-base leading-8 text-slate-300">
+              {hero.Plot !== "N/A"
+                ? hero.Plot.length > 240
+                  ? `${hero.Plot.slice(0, 240)}...`
+                  : hero.Plot
+                : "Descubre la historia y todos los detalles de esta película."}
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <button
+                onClick={() => showDetails(hero)}
+                className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3.5 font-bold text-white shadow-lg shadow-violet-900/40 transition hover:bg-violet-500"
+              >
+                <Play size={18} fill="currentColor" />
+                Ver detalles
+              </button>
+
+              <a
+                href="#peliculas"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3.5 font-bold text-white backdrop-blur transition hover:bg-white/20"
+              >
+                Explorar catálogo
+                <ArrowRight size={18} />
+              </a>
+            </div>
+
+            <div className="mt-10 flex items-center gap-3">
+              {movies.slice(0, 5).map((movie, index) => (
+                <button
+                  key={movie.imdbID}
+                  onClick={() => setActive(index)}
+                  aria-label={`Destacar ${movie.Title}`}
+                  className={`h-1.5 rounded-full transition-all ${
+                    active === index
+                      ? "w-12 bg-violet-400"
+                      : "w-6 bg-white/30 hover:bg-white/60"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-[340px]">
+            <div className="absolute -inset-5 rounded-[2rem] bg-violet-600/20 blur-3xl" />
+            {hero.Poster !== "N/A" ? (
+              <img
+                src={hero.Poster}
+                alt={`Póster de ${hero.Title}`}
+                className="relative aspect-[2/3] w-full rotate-2 rounded-2xl border border-white/20 object-cover shadow-2xl shadow-black/60 transition duration-500"
+              />
+            ) : (
+              <div className="relative flex aspect-[2/3] items-center justify-center rounded-2xl bg-slate-800">
+                <Film size={60} />
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section id="peliculas" className="mx-auto max-w-7xl px-5 py-16 md:px-10">
+        <div className="mb-9 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="mb-3 text-sm font-bold uppercase tracking-widest text-violet-400">
+              ✦ NUESTRA SELECCIÓN
+            </p>
+            <h2 className="text-3xl font-black md:text-4xl">
+              Películas destacadas
+            </h2>
+            <p className="mt-3 text-slate-400">
+              Grandes historias para descubrir y conocer.
+            </p>
+          </div>
+
+          <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+            {movies.length} títulos
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:gap-6">
+          {movies.map((movie) => (
+            <button
+              key={movie.imdbID}
+              onClick={() => showDetails(movie)}
+              className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition duration-300 hover:-translate-y-2 hover:border-violet-400/60 hover:shadow-2xl hover:shadow-violet-900/20"
+            >
+              <div className="relative aspect-[2/3] overflow-hidden bg-slate-800">
+                {movie.Poster !== "N/A" ? (
+                  <img
+                    src={movie.Poster}
+                    alt={movie.Title}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-110"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <Film size={44} className="text-slate-500" />
+                  </div>
+                )}
+
+                <span className="absolute left-3 top-3 rounded-full bg-black/75 px-3 py-1 text-xs font-bold text-white">
+                  {movie.Type === "series" ? "SERIE" : "PELÍCULA"}
+                </span>
+
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/50 to-transparent p-4 pt-16">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1 text-sm font-bold text-amber-400">
+                      <Star size={15} fill="currentColor" />
+                      {movie.imdbRating}
+                    </span>
+                    <span className="text-xs text-slate-200">{movie.Year}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <h3 className="truncate font-bold text-white">{movie.Title}</h3>
+                <p className="mt-2 truncate text-sm text-slate-400">{movie.Genre}</p>
+                <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-3">
+                  <span className="text-xs text-slate-400">{movie.Runtime}</span>
+                  <span className="flex items-center gap-1 text-xs font-semibold text-violet-300">
+                    Ver detalles <ArrowRight size={14} />
+                  </span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {error && <p className="text-red-400">{error}</p>}
+
+      {selected && (
+        <div
+          onClick={() => setSelected(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Detalles de ${selected.Title}`}
+            onClick={(event) => event.stopPropagation()}
+            className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/15 bg-[#111827] shadow-2xl"
+          >
+            <button
+              onClick={() => setSelected(null)}
+              aria-label="Cerrar"
+              className="absolute right-5 top-5 z-10 rounded-full bg-black/70 p-3 hover:bg-violet-600"
+            >
+              <X size={22} />
+            </button>
+
+            <div className="grid gap-8 p-6 md:grid-cols-[250px_1fr] md:p-9">
+              {selected.Poster !== "N/A" ? (
+                <img
+                  src={selected.Poster}
+                  alt={selected.Title}
+                  className="w-full rounded-2xl"
+                />
+              ) : (
+                <div className="flex aspect-[2/3] items-center justify-center rounded-2xl bg-slate-800">
+                  <Clapperboard size={48} />
+                </div>
+              )}
+
+              <div>
+                <span className="text-xs font-bold uppercase tracking-widest text-violet-400">
+                  {selected.Type === "series" ? "Serie" : "Película"}
+                </span>
+                <h2 className="mt-3 text-3xl font-black md:text-4xl">
+                  {selected.Title}
+                </h2>
+
+                <div className="mt-5 flex flex-wrap gap-4 text-sm text-slate-300">
+                  <span className="flex items-center gap-1 text-amber-400">
+                    <Star size={17} fill="currentColor" />
+                    {selected.imdbRating}/10
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CalendarDays size={17} />
+                    {selected.Year}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock3 size={17} />
+                    {selected.Runtime}
+                  </span>
+                </div>
+
+                <p className="mt-5 text-sm font-semibold text-violet-300">
+                  {selected.Genre}
+                </p>
+                <p className="mt-5 leading-7 text-slate-300">
+                  {selected.Plot !== "N/A"
+                    ? selected.Plot
+                    : "Sin sinopsis disponible."}
+                </p>
+
+                <div className="mt-7 space-y-3 border-t border-white/10 pt-6 text-sm text-slate-300">
+                  <p><strong className="text-white">Director:</strong> {selected.Director}</p>
+                  <p><strong className="text-white">Reparto:</strong> {selected.Actors}</p>
+                  <p><strong className="text-white">Estreno:</strong> {selected.Released}</p>
+                  <p><strong className="text-white">País:</strong> {selected.Country}</p>
+                  <p><strong className="text-white">Premios:</strong> {selected.Awards}</p>
+                  <p><strong className="text-white">Idioma:</strong> {selected.Language}</p>
+                </div>
+
+                <a
+                  href={`https://www.imdb.com/title/${selected.imdbID}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-8 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 font-bold hover:bg-violet-500"
+                >
+                  <Star size={18} />
+                  Ver en IMDb
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
